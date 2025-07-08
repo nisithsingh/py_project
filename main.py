@@ -228,7 +228,7 @@ class CPACConsistencyService:
         await self.protocol.send_result(result_message)
     
     def _format_error_reason(self, exception: Exception, task_id: str) -> str:
-        """Format error reason with exception type and location details"""
+        """Format error reason with exception type, location details, and full stacktrace"""
         import traceback
         
         # Get exception type
@@ -244,12 +244,15 @@ class CPACConsistencyService:
                 error_location = f"{frame.name}() in {frame.filename.split('/')[-1]}:{frame.lineno}"
                 break
         
-        # Format comprehensive error reason
+        # Get full stacktrace
+        full_stacktrace = ''.join(traceback.format_exception(type(exception), exception, exception.__traceback__))
+        
+        # Format comprehensive error reason with stacktrace
         reason = f"{error_type}: {str(exception)}"
         if error_location != "unknown":
             reason += f" | Location: {error_location}"
         
-        reason += f" | Task: {task_id}"
+        reason += f"\n\nFull Stacktrace:\n{full_stacktrace}"
         
         return reason
     

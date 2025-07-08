@@ -24,7 +24,10 @@ from ai_foundation.protocol.luma_protocol.models import (
     LumaMessage, Source, Target, Payload, Task
 )
 from graph.cpac_consistency_graph import CPACConsistencyGraph, GraphState
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 class TestCPACConsistencyGraph(unittest.TestCase):
     """Test cases for CPACConsistencyGraph class methods"""
@@ -525,7 +528,7 @@ class TestCPACConsistencyGraph(unittest.TestCase):
                 final_result={},
                 messages=[{
                     "type": "preprocessing",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }]
             )
             

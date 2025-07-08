@@ -16,7 +16,10 @@ from data_model.schemas import (
     ClaimCategory, Claim, CPACData, Discrepancy, DiscrepancyType
 )
 from agent.improver_node import ImproverNode
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 class TestImproverNode(unittest.TestCase):
     """Test cases for ImproverNode"""
@@ -34,7 +37,7 @@ class TestImproverNode(unittest.TestCase):
         # Create improver node with existing prompt file
         try:
             self.improver = ImproverNode(
-                prompt_path="prompts/improvement_prompt_v4.j2",
+                prompt_path="prompts/improvement_prompt_v5.j2",
                 config_path="config/config.yaml"
             )
         except Exception as e:
@@ -205,6 +208,127 @@ class TestImproverNode(unittest.TestCase):
         
         result = asyncio.run(run_test())
         self.assertIsNotNone(result)
+
+    def test_improve_employment_overlap_discrepancy(self):
+        """Test improving employment timeline overlap discrepancy"""
+        # Create overlapping employment claims
+        overlapping_claims = [
+            Claim(
+                claim_id=1,
+                cpac_data=CPACData(
+                    employer_name="Company A",
+                    job_title="Software Engineer",
+                    start_date="2020-01-01",
+                    end_date="2021-06-30",  # Overlaps with next job
+                    annual_compensation="80000 USD",
+                    employment_type="full-time"
+                )
+            ),
+            Claim(
+                claim_id=2,
+                cpac_data=CPACData(
+                    employer_name="Company B",
+                    job_title="Senior Engineer", 
+                    start_date="2021-03-01",  # 4-month overlap with previous job
+                    end_date="2023-12-31",
+                    annual_compensation="95000 USD",
+                    employment_type="full-time"
+                )
+            )
+        ]
+        
+        # Create employment overlap discrepancy
+        overlap_discrepancy = Discrepancy(
+            discrepancy_id=1,
+            discrepancy_type=DiscrepancyType.EMPLOYMENT_TIMELINE_OVERLAP,
+            description="Employment timeline overlap detected",
+            reason="Company A employment (2020-01-01 to 2021-06-30) overlaps with Company B employment (2021-03-01 to 2023-12-31) by 4 months",
+            recommendation="Clarify employment dates or determine if roles were concurrent",
+            affected_claim_ids=[1, 2],
+            affected_document_ids=[]
+        )
+        
+        async def run_test():
+            if os.getenv('OPENAI_API_KEY') == 'test-key-for-unit-tests':
+                self.skipTest("Skipping LLM test - no real API key provided")
+            
+            # Test with approve action (keep the overlap for further investigation)
+            review_action = {
+                "remove": {},
+                "approve": {"1": "Overlap may be valid - client may have worked part-time at both companies"},
+                "revise": {}
+            }
+            
+            result = await self.improver.improve_discrepancies(
+                [overlap_discrepancy],
+                review_action=review_action
+            )
+            
+            # Should return list with approved discrepancy
+            self.assertIsInstance(result, list)
+            
+            return result
+        
+        try:
+            result = asyncio.run(run_test())
+            self.assertIsNotNone(result)
+        except unittest.SkipTest:
+            raise
+        except Exception as e:
+            if "API key" in str(e):
+                self.skipTest(f"Skipping LLM test - API key issue: {str(e)}")
+            else:
+                raise
+
+    def test_improve_employment_overlap_with_revision(self):
+        """Test improving employment overlap discrepancy with revision action"""
+        # Create overlap discrepancy
+        overlap_discrepancy = Discrepancy(
+            discrepancy_id=2,
+            discrepancy_type=DiscrepancyType.EMPLOYMENT_TIMELINE_OVERLAP,
+            description="Timeline overlap between consecutive employments",
+            reason="2-month overlap detected between positions",
+            recommendation="Review employment transition dates",
+            affected_claim_ids=[1, 2], 
+            affected_document_ids=[]
+        )
+        
+        async def run_test():
+            if os.getenv('OPENAI_API_KEY') == 'test-key-for-unit-tests':
+                self.skipTest("Skipping LLM test - no real API key provided")
+            
+            # Test with revise action (update the recommendation)
+            review_action = {
+                "remove": {},
+                "approve": {},
+                "revise": {
+                    "2": {
+                        "suggestion": "Update recommendation to request official employment verification documents",
+                        "field": "recommendation"
+                    }
+                }
+            }
+            
+            result = await self.improver.improve_discrepancies(
+                [overlap_discrepancy],
+                review_action=review_action
+            )
+            
+            # Should return list with revised discrepancy
+            self.assertIsInstance(result, list)
+            
+            return result
+        
+        try:
+            result = asyncio.run(run_test())
+            self.assertIsNotNone(result)
+        except unittest.SkipTest:
+            raise
+        except Exception as e:
+            if "API key" in str(e):
+                self.skipTest(f"Skipping LLM test - API key issue: {str(e)}")
+            else:
+                raise
 
     def test_error_handling(self):
         """Test error handling with invalid data"""

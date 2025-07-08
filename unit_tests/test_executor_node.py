@@ -15,7 +15,10 @@ from data_model.schemas import (
     CPACConsistencyRequest, ClaimCategory, Claim, CPACData, Discrepancy
 )
 from agent.executor_node import ExecutorNode
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 class TestExecutorNode(unittest.TestCase):
     """Test cases for ExecutorNode"""

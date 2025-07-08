@@ -15,7 +15,10 @@ from data_model.schemas import (
     CPACConsistencyRequest, CPACConsistencyResult, ReviewOutput,
     ClaimCategory, Claim, CPACData, Discrepancy, DiscrepancyType
 )
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 class TestReviewerNode(unittest.TestCase):
     """Test cases for ReviewerNode"""
@@ -34,7 +37,7 @@ class TestReviewerNode(unittest.TestCase):
         try:
             from agent.reviewer_node import ReviewerNode
             self.reviewer = ReviewerNode(
-                prompt_path="prompts/reviewer_prompt_improved_v11.j2",
+                prompt_path="prompts/reviewer_prompt_binary_v16.j2",
                 config_path="config/config.yaml"
             )
         except Exception as e:
