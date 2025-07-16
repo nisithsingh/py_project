@@ -1,0 +1,172 @@
+{
+  "name": "cpac_consistency_agent",
+  "version": "1.0.0",
+  "provider": "POD2 PKR",
+  "description": "Identifies inconsistencies among CPAC claims such as employment gaps, overlaps, salary inconsistency etc.",
+  "scope": {
+    "domain": ["PKR", "KYC"],
+    "responsibilities": [
+      "This agent conducts systematic discrepancy analysis between CPAC claims. The agent receives a list of CPAC claims and url to the CPAC full text. The scope of this agent is to confirm that the information present in the CPAC claims are consistent with each other. The output is a list of discrepancies with their types, descriptions and reasons. An empty output list would indicate that the information found within the CPAC claims are consistent."
+    ],
+    "skills": ["Identify discrepancies among claims"],
+    "limitations": "Focuses on detecting inconsistencies within cpac only. Does not compare against supporting documents. Only employment data fields are currently implemented",
+    "dependsOnAgents": ["discrepancy_analyzer_agent"]
+  },
+  "requestSchema": {
+    "type": "object",
+    "description": "Schema for request to CPAC consistency agent",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Client Name"
+      },
+      "claim_category": {
+        "type": "string",
+        "enum": ["employment", "inheritance", "business", "asset_disposal", "investment"],
+        "description": "Category of wealth claims"
+      },
+      "cpac_text": {
+        "type": "string",
+        "description": "Full text extraction from CPAC document relevant to the claim_category"
+      },
+      "claims": {
+        "type": "array",
+        "description": "List of claims to analyze",
+        "items": {
+          "type": "object",
+          "properties": {
+            "claim_id": {
+              "type": "integer",
+              "description": "Unique identifier for the claim"
+            },
+            "claim_type": {
+              "type": "string",
+              "description": "Type of claim (e.g., original_cpac_claim, new_claim)"
+            },
+            "cpac_data": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/EmploymentClaim"
+                }
+              ],
+              "description": "CPAC data associated with the claim"
+            }
+          },
+          "required": ["claim_id", "claim_type", "cpac_data"]
+        }
+      }
+    },
+    "required": ["name", "claim_category", "claims", "cpac_text"]
+  },
+  "resultSchema": {
+    "type": "object",
+    "description": "Schema for document consistency analysis results",
+    "properties": {
+      "discrepancies": {
+        "type": "array",
+        "description": "List of discrepancies found",
+        "items": {
+          "type": "object",
+          "properties": {
+            "discrepancy_id": {
+              "type": "integer",
+              "description": "Sequential identifier for the discrepancy (1, 2, 3...)"
+            },
+            "discrepancy_type": {
+              "type": "string",
+              "description": "Type of discrepancy (e.g., Document Inconsistency)"
+            },
+            "data_field": {
+              "type": "string",
+              "description": "Data field where discrepancy was found (e.g., company_name, job_title, annual_compensation)"
+            },
+            "description": {
+              "type": "string",
+              "description": "Brief description of the discrepancy"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Detailed explanation of the discrepancy"
+            },
+            "recommendation": {
+              "type": "string",
+              "description": "Recommended action to resolve the discrepancy"
+            },
+            "affected_claim_ids": {
+              "type": "array",
+              "description": "List of claim IDs affected by this discrepancy",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "affected_document_ids": {
+              "type": "array",
+              "description": "List of affected document IDs with page numbers",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "docId": {
+                    "type": "string",
+                    "description": "Document ID"
+                  },
+                  "page_number": {
+                    "type": "integer",
+                    "description": "Page number where discrepancy was found"
+                  }
+                },
+                "required": ["docId", "page_number"]
+              }
+            }
+          },
+          "required": ["discrepancy_id", "discrepancy_type", "data_field", "description", "reason", "recommendation", "affected_claim_ids", "affected_document_ids"]
+        }
+      }
+    },
+    "required": ["discrepancies"]
+  },
+  "$defs": {
+    "EmploymentClaim": {
+      "type": "object",
+      "properties": {
+        "employer_name": {
+          "type": "string",
+          "required": false,
+          "description": "Name of the employer"
+        },
+        "job_title": {
+          "type": "string",
+          "required": false,
+          "description": "Job title or position"
+        },
+        "professional_duties": {
+          "type": "string",
+          "required": false,
+          "description": "Description of professional duties"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date-time",
+          "required": true,
+          "description": "Start date in ISO format"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date-time",
+          "required": false,
+          "description": "End date in ISO format (optional)"
+        },
+        "annual_compensation": {
+          "type": "string",
+          "required": false,
+          "description": "Annual compensation amount with currency combined (e.g., 'USD 1000000')"
+        },
+        "employment_type": {
+          "type": "string",
+          "required": false,
+          "description": "Employment type: full-time, part-time, contract, etc."
+        }
+      },
+      "required": ["start_date"]
+    }
+  }
+}
